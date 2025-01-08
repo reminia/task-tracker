@@ -1,0 +1,21 @@
+[project]
+name = "task-tracker"
+version = "0.1.0"
+description = "MCP server for task management with Linear and TrackingTime integration"
+requires-python = ">=3.12"
+authors = [
+    { name = "Leecy", email = "sleefd@gmail.com" }
+]
+license = "Apache-2.0"
+readme = "README.md"
+dependencies = [
+    "mcp>=1.1.2",
+    "aiohttp>=3.8.0"
+]
+
+[build-system]
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
+
+[project.scripts]
+task-tracker = "task_tracker:main"
