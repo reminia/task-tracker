@@ -7,36 +7,12 @@ A Model Context Protocol server that integrates Linear task management and Track
 - Integration with Linear API for task management
 - Integration with TrackingTime for task time tracking
 
-## Prerequisites
+## Setup
 
-- Python 3.8 or higher
-- [uv](https://github.com/astral-sh/uv) package manager
+1. setup the environment, refer to the [.env.example](.env.example) file.
+2. `sh scripts/setup.sh` to build the package or run below uv commands directly.
 
-## Installation
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/yourusername/mcp-task-manager.git
-cd mcp-task-manager
-```
-
-2. Run the setup script:
-
-```bash
-chmod +x scripts/setup.sh
-./scripts/setup.sh
-```
-
-3. Configure environment variables:
-
-```bash
-cp .env.example .env
-# Edit .env with your API keys
-```
-
-4. Run the MCP server:
-
-```bash
-python -m mcp_task_manager
-```
+  ```bash
+  uv build 
+  uv run task-tracker
+  ```
