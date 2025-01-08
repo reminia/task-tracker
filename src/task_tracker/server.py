@@ -22,21 +22,23 @@ logging.basicConfig(
 logger = logging.getLogger("task-tracker")
 logger.info("task-tracker server started")
 
+
 @server.list_tools()
 async def handle_list_tools() -> List[types.Tool]:
     """List available tools"""
     return [
         types.Tool(
             name="create_task",
-            description="Create a new task",
+            description="Create a new task in Linear",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "title": {"type": "string"},
-                    "description": {"type": "string"},
-                    "assignee_id": {"type": "string", "optional": True}
+                    "description": {"type": "string", "optional": True},
+                    "assignee_id": {"type": "string", "optional": True},
+                    "team_id": {"type": "string", "optional": True}
                 },
-                "required": ["title", "description"]
+                "required": ["title"]
             }
         ),
         types.Tool(
@@ -74,25 +76,55 @@ async def handle_list_tools() -> List[types.Tool]:
                 },
                 "required": ["entry_id"]
             }
+        ),
+        types.Tool(
+            name="set_current_team",
+            description="Set the current team by name",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team_name": {"type": "string"}
+                },
+                "required": ["team_name"]
+            }
+        ),
+        types.Tool(
+            name="get_my_tasks",
+            description="Get pending tasks assigned to me. Default status is 'unstarted' if not specified.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "optional": True,
+                        "description": "List of task status to filter by"
+                    }
+                },
+                "required": []
+            }
         )
     ]
+
 
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[types.TextContent]:
     """Handle tool calls"""
     try:
-        if not arguments:
+        if arguments is None:
             raise ValueError("Missing arguments")
 
         if name == "create_task":
             result = await linear_client.create_task(
                 title=arguments["title"],
-                description=arguments["description"],
-                assignee_id=arguments.get("assignee_id")
+                description=arguments.get("description"),
+                assignee_id=arguments.get("assignee_id"),
+                team_id=arguments.get("team_id")
             )
             return [types.TextContent(
                 type="text",
-                text=f"Task created successfully: {json.dumps(result, indent=2)}"
+                text=f"Task created successfully: {
+                    json.dumps(result, indent=2)}"
             )]
 
         elif name == "log_time":
@@ -103,7 +135,8 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
             )
             return [types.TextContent(
                 type="text",
-                text=f"Time logged successfully: {json.dumps(result, indent=2)}"
+                text=f"Time logged successfully: {
+                    json.dumps(result, indent=2)}"
             )]
 
         elif name == "start_tracking":
@@ -125,6 +158,22 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
                 text=f"Time tracking stopped: {json.dumps(result, indent=2)}"
             )]
 
+        elif name == "set_current_team":
+            team_name = arguments["team_name"]
+            await linear_client.set_current_team(team_name)
+            return [types.TextContent(
+                type="text",
+                text=f"Set current team to: {team_name}"
+            )]
+
+        elif name == "get_my_tasks":
+            states = arguments.get("states", ["unstarted"])
+            tasks = await linear_client.get_my_pending_tasks(states=states)
+            return [types.TextContent(
+                type="text",
+                text=f"Your pending tasks:\n{json.dumps(tasks, indent=2)}"
+            )]
+
         raise ValueError(f"Unknown tool: {name}")
 
     except Exception as e:
@@ -132,6 +181,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
             type="text",
             text=f"Error: {str(e)}"
         )]
+
 
 @server.list_resources()
 async def handle_list_resources() -> List[types.Resource]:
@@ -157,19 +207,18 @@ async def handle_list_resources() -> List[types.Resource]:
         )
     ]
 
+
 @server.read_resource()
 async def handle_read_resource(uri: str) -> str:
     """Read a resource"""
     if uri == "tasks://all":
         tasks = await linear_client.get_tasks()
         return json.dumps(tasks, indent=2)
-    elif uri == "time://entries":
-        entries = await timetracking_client.get_time_entries()
-        return json.dumps(entries, indent=2)
     elif uri == "time://active":
         active = await timetracking_client.get_active_tracking()
         return json.dumps(active, indent=2)
     raise ValueError(f"Unknown resource: {uri}")
+
 
 async def main():
     async with stdio_server() as (read_stream, write_stream):
@@ -188,4 +237,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())
