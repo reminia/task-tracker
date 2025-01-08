@@ -36,9 +36,9 @@ async def handle_list_tools() -> List[types.Tool]:
                     "title": {"type": "string"},
                     "description": {"type": "string", "optional": True},
                     "assignee_id": {"type": "string", "optional": True},
-                    "team_id": {"type": "string", "optional": True}
+                    "team_id": {"type": "string"}
                 },
-                "required": ["title"]
+                "required": ["title", "team_id"]
             }
         ),
         types.Tool(
@@ -60,8 +60,14 @@ async def handle_list_tools() -> List[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "project": {"type": "string"},
-                    "description": {"type": "string"}
+                    "project": {
+                        "type": "string",
+                        "description": "task project"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "task name"
+                    }
                 },
                 "required": ["project", "description"]
             }
@@ -216,31 +222,6 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
             type="text",
             text=f"Error: {str(e)}"
         )]
-
-
-@server.list_resources()
-async def handle_list_resources() -> List[types.Resource]:
-    """List available resources"""
-    return [
-        types.Resource(
-            uri="tasks://all",
-            name="All Tasks",
-            mimeType="application/json",
-            description="List of all tasks"
-        ),
-        types.Resource(
-            uri="time://entries",
-            name="Time Entries",
-            mimeType="application/json",
-            description="List of time entries"
-        ),
-        types.Resource(
-            uri="time://active",
-            name="Active Time Tracking",
-            mimeType="application/json",
-            description="Currently active time tracking session"
-        )
-    ]
 
 
 async def main():

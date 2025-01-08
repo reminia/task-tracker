@@ -21,9 +21,7 @@ class TimeTrackingClient:
         Returns:
             Union[dict, str]: Response from TrackingTime API - either JSON dict or raw text if not JSON
         """
-        # First create the task
         async with aiohttp.ClientSession(auth=self.auth) as session:
-            # Start tracking the created task
             current_time = datetime.now(
                 timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             async with session.post(
