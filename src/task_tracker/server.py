@@ -60,10 +60,10 @@ async def handle_list_tools() -> List[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string"},
+                    "project": {"type": "string"},
                     "description": {"type": "string"}
                 },
-                "required": ["task_id", "description"]
+                "required": ["project", "description"]
             }
         ),
         types.Tool(
@@ -90,7 +90,7 @@ async def handle_list_tools() -> List[types.Tool]:
         ),
         types.Tool(
             name="get_my_tasks",
-            description="Get pending tasks assigned to me. Default status is 'unstarted' if not specified.",
+            description="Get tasks assigned to me. Support task status: backlog, unstarted, started, completed, canceled, triage. Default is unstarted.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -102,6 +102,20 @@ async def handle_list_tools() -> List[types.Tool]:
                     }
                 },
                 "required": []
+            }
+        ),
+        types.Tool(
+            name="search_tasks",
+            description="Search for tasks by title or identifier",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "search_term": {
+                        "type": "string",
+                        "description": "Text to search for in task titles or identifiers"
+                    }
+                },
+                "required": ["search_term"]
             }
         )
     ]
@@ -141,7 +155,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
 
         elif name == "start_tracking":
             result = await timetracking_client.start_tracking(
-                task_id=arguments["task_id"],
+                project=arguments["project"],
                 description=arguments["description"]
             )
             return [types.TextContent(
@@ -168,10 +182,31 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
 
         elif name == "get_my_tasks":
             states = arguments.get("states", ["unstarted"])
-            tasks = await linear_client.get_my_pending_tasks(states=states)
+            tasks = await linear_client.get_tasks(states=states)
             return [types.TextContent(
                 type="text",
                 text=f"Your pending tasks:\n{json.dumps(tasks, indent=2)}"
+            )]
+
+        elif name == "search_tasks":
+            search_term = arguments.get("search_term")
+            if not search_term:
+                return [types.TextContent(
+                    type="text",
+                    text="Please provide a search term"
+                )]
+
+            tasks = await linear_client.search_tasks(search_term)
+            if not tasks:
+                return [types.TextContent(
+                    type="text",
+                    text=f"No tasks found matching '{search_term}'"
+                )]
+
+            return [types.TextContent(
+                type="text",
+                text=f"Found {len(tasks)} tasks matching '{search_term}':\n{
+                    json.dumps(tasks, indent=2)}"
             )]
 
         raise ValueError(f"Unknown tool: {name}")
@@ -206,18 +241,6 @@ async def handle_list_resources() -> List[types.Resource]:
             description="Currently active time tracking session"
         )
     ]
-
-
-@server.read_resource()
-async def handle_read_resource(uri: str) -> str:
-    """Read a resource"""
-    if uri == "tasks://all":
-        tasks = await linear_client.get_tasks()
-        return json.dumps(tasks, indent=2)
-    elif uri == "time://active":
-        active = await timetracking_client.get_active_tracking()
-        return json.dumps(active, indent=2)
-    raise ValueError(f"Unknown resource: {uri}")
 
 
 async def main():

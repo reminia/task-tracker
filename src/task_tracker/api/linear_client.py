@@ -26,38 +26,6 @@ class LinearClient:
                     raise ValueError(f"Linear API error: {error_data}")
                 return await response.json()
 
-    async def get_tasks(self, status: Optional[str] = None) -> List[dict]:
-        """Fetch tasks from Linear with pagination"""
-        query = """
-        query Issues($after: String) {
-            issues(first: 50, after: $after, orderBy: updatedAt) {
-                nodes {
-                    id
-                    identifier
-                    title
-                    description
-                    state {
-                        id
-                        name
-                        type
-                    }
-                    assignee {
-                        id
-                        name
-                        email
-                    }
-                    updatedAt
-                }
-                pageInfo {
-                    hasNextPage
-                    endCursor
-                }
-            }
-        }
-        """
-        result = await self.execute_query(query)
-        return result["data"]["issues"]["nodes"]
-
     async def set_current_team(self, team_name: str) -> None:
         """Set the current team ID for task operations"""
         team = await self.fetch_team(team_name)
@@ -170,7 +138,7 @@ class LinearClient:
         teams = result["data"]["teams"]["nodes"]
         return teams[0] if teams else None
 
-    async def get_my_pending_tasks(self, states: Union[str, List[str]] = "unstarted") -> List[dict]:
+    async def get_tasks(self, states: Union[str, List[str]] = "unstarted") -> List[dict]:
         """Fetch tasks assigned to the authenticated user filtered by state(s)
         
         Args:
@@ -179,7 +147,7 @@ class LinearClient:
                    Valid values: "backlog", "unstarted", "started", "completed", "canceled", "triage"
         
         Returns:
-            List[dict]: List of tasks matching the criteria
+            List[dict]: List of tasks matching the criteria, including project information
             
         Raises:
             ValueError: If no current team is set
@@ -206,6 +174,10 @@ class LinearClient:
                     identifier
                     title
                     description
+                    project {
+                        id
+                        name
+                    }
                     state {
                         id
                         name
@@ -229,3 +201,100 @@ class LinearClient:
             }
         )
         return result["data"]["issues"]["nodes"]
+
+    async def search_tasks(self, search_term: str) -> List[dict]:
+        """Search for tasks by title/description across the current team
+        
+        Args:
+            search_term: Text to search for in task titles and descriptions
+        
+        Returns:
+            List[dict]: List of tasks matching the search criteria
+            
+        Raises:
+            ValueError: If no current team is set
+        """
+        if not self._current_team_id:
+            raise ValueError("Current team must be set before searching tasks")
+
+        query = """
+        query SearchIssues($teamId: ID!, $searchTerm: String!) {
+            issues(
+                first: 50,
+                filter: {
+                    team: { id: { eq: $teamId } },
+                    or: [
+                        { title: { contains: $searchTerm } },
+                        { description: { contains: $searchTerm } }
+                    ]
+                },
+                orderBy: updatedAt
+            ) {
+                nodes {
+                    id
+                    identifier
+                    title
+                    description
+                    state {
+                        id
+                        name
+                        type
+                    }
+                    assignee {
+                        id
+                        name
+                        email
+                    }
+                    updatedAt
+                }
+            }
+        }
+        """
+        result = await self.execute_query(
+            query,
+            {
+                "teamId": self._current_team_id,
+                "searchTerm": search_term
+            }
+        )
+        return result["data"]["issues"]["nodes"]
+
+    async def start_tracking(self, task_id: str, description: str) -> dict:
+        """Start time tracking for a task
+        
+        Args:
+            task_id: ID of the task to track time for
+            description: Description of the time tracking entry
+            
+        Returns:
+            dict: Details of the created time tracking entry
+        """
+        mutation = """
+        mutation CreateTimeEntry($input: TimeEntryCreateInput!) {
+            timeEntryCreate(input: $input) {
+                success
+                timeEntry {
+                    id
+                    description
+                    startedAt
+                    issue {
+                        id
+                        identifier
+                        title
+                    }
+                }
+            }
+        }
+        """
+        variables = {
+            "input": {
+                "issueId": task_id,
+                "description": description,
+                "startedAt": "now"
+            }
+        }
+
+        result = await self.execute_query(mutation, variables)
+        if not result.get("data", {}).get("timeEntryCreate", {}).get("success"):
+            raise ValueError("Failed to start time tracking")
+        return result["data"]["timeEntryCreate"]["timeEntry"]

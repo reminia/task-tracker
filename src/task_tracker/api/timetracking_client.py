@@ -1,32 +1,37 @@
-from typing import Optional
+from typing import Optional, Union
 import aiohttp
-from datetime import datetime
+from datetime import datetime, timezone
 from task_tracker.config import settings
+
 
 class TimeTrackingClient:
     def __init__(self):
         self.api_key = settings.TIMETRACKING_API_KEY
-        self.base_url = "https://api.trackingtime.co/v4"
-        self.auth = aiohttp.BasicAuth(self.api_key, 'api-token')
+        self.base_url = "https://app.trackingtime.co/api/v4"
+        self.auth = aiohttp.BasicAuth.decode(f"Basic {self.api_key}")
         self.headers = {"Content-Type": "application/json"}
 
-    async def start_tracking(self, task_id: str, description: str) -> dict:
-        """Start time tracking for a task using TrackingTime API
+    async def start_tracking(self, project: str, description: str) -> Union[dict, str]:
+        """Start tracking a task
 
         Args:
-            task_id: The ID of the task to track
-            description: Description of the time entry
+            project: Name of the project to create the task in
+            description: Description/name of the task
 
         Returns:
-            dict: Response from TrackingTime API containing the tracking session details
+            Union[dict, str]: Response from TrackingTime API - either JSON dict or raw text if not JSON
         """
-        async with aiohttp.ClientSession(auth=self.auth, headers=self.headers) as session:
+        # First create the task
+        async with aiohttp.ClientSession(auth=self.auth) as session:
+            # Start tracking the created task
+            current_time = datetime.now(
+                timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             async with session.post(
-                f"{self.base_url}/time_entries/start",
-                json={
-                    "task_id": task_id,
-                    "description": description,
-                    "start_date": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                f"{self.base_url}/tasks/track",
+                params={
+                    "date": current_time,
+                    "task_name": description,
+                    "project_name": project
                 }
             ) as response:
                 response.raise_for_status()
@@ -45,7 +50,7 @@ class TimeTrackingClient:
             async with session.post(
                 f"{self.base_url}/time_entries/{entry_id}/stop",
                 json={
-                    "end_date": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                    "end_date": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                 }
             ) as response:
                 response.raise_for_status()
