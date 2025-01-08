@@ -1,5 +1,8 @@
 # Task Tracker
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+![ci](https://github.com/reminia/task-tracker/actions/workflows/ci.yml/badge.svg)
+
 A Model Context Protocol server that integrates Linear task management and TrackingTime time tracking.
 
 ## Features
