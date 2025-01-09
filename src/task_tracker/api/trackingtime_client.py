@@ -11,7 +11,7 @@ class TrackingTimeClient:
         self.auth = aiohttp.BasicAuth.decode(f"Basic {self.api_key}")
         self.headers = {"Content-Type": "application/json"}
 
-    async def start_tracking(self, project: str, description: str) -> dict:
+    async def start_tracking(self, project: str, task: str) -> dict:
         """Start time tracking a task
 
         Args:
@@ -30,7 +30,7 @@ class TrackingTimeClient:
                 f"{self.base_url}/tasks/track",
                 params={
                     "date": current_time,
-                    "task_name": description,
+                    "task_name": task,
                     "project_name": project,
                     "return_task": "true",
                 }

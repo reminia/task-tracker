@@ -96,12 +96,12 @@ async def handle_list_tools() -> List[types.Tool]:
                         "type": "string",
                         "description": "task project"
                     },
-                    "description": {
+                    "task": {
                         "type": "string",
-                        "description": "task name"
+                        "description": "task name which is composed by identifier and title"
                     }
                 },
-                "required": ["project", "description"]
+                "required": ["project", "task"]
             }
         ),
         types.Tool(
@@ -190,7 +190,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
         elif name == "start_tracking":
             result = await trackingtime_client.start_tracking(
                 project=arguments["project"],
-                description=arguments["description"]
+                task=arguments["task"]
             )
             return [types.TextContent(
                 type="text",
