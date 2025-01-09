@@ -1,6 +1,6 @@
 from typing import Optional
 import aiohttp
-from datetime import datetime, timezone
+from datetime import datetime
 from task_tracker.config import settings
 
 
@@ -21,16 +21,18 @@ class TrackingTimeClient:
         Returns:
             dict: json containing the tracking_task_id
         """
-        async with aiohttp.ClientSession(auth=self.auth, headers=self.headers) as session:
-            current_time = datetime.now(
-                timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        async with aiohttp.ClientSession(auth=self.auth) as session:
+            # Get local time
+            local_tz = datetime.now().astimezone().tzinfo
+            current_time = datetime.now(local_tz).strftime("%Y-%m-%d %H:%M:%S")
+
             async with session.post(
                 f"{self.base_url}/tasks/track",
                 params={
                     "date": current_time,
                     "task_name": description,
                     "project_name": project,
-                    "return_task": "true"
+                    "return_task": "true",
                 }
             ) as response:
                 response.raise_for_status()
@@ -47,8 +49,10 @@ class TrackingTimeClient:
             dict: Response from TrackingTime API containing the task details
         """
         async with aiohttp.ClientSession(auth=self.auth, headers=self.headers) as session:
-            current_time = datetime.now(
-                timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            # stop and start timezone must match, otherwise server 500
+            local_tz = datetime.now().astimezone().tzinfo
+            current_time = datetime.now(local_tz).strftime("%Y-%m-%d %H:%M:%S")
+
             async with session.post(
                 f"{self.base_url}/tasks/stop",
                 params={
