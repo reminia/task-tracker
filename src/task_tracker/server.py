@@ -11,7 +11,7 @@ import mcp.types as types
 from task_tracker.api.linear_client import LinearClient
 from task_tracker.api.timetracking_client import TimeTrackingClient
 
-linear_client = LinearClient()
+linear_client = asyncio.run(LinearClient.create())
 timetracking_client = TimeTrackingClient()
 server = Server("task-tracker")
 

@@ -10,8 +10,15 @@ class LinearClient:
             "Content-Type": "application/json",
             "Authorization": settings.LINEAR_API_KEY
         }
-        self._current_team_id = None
         self._current_team_name = None
+        self._current_team_id = None
+
+    @classmethod
+    async def create(cls, team_name: Optional[str] = settings.LINEAR_TEAM) -> "LinearClient":
+        client = cls()
+        if team_name:
+            await client.set_current_team(team_name)
+        return client
 
     async def execute_query(self, query: str, variables: Optional[dict] = None) -> dict:
         """Execute a GraphQL query against Linear API"""
