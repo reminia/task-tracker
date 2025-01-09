@@ -3,24 +3,24 @@ import json
 import logging
 from typing import Any, Dict, List
 
-from mcp.server.models import InitializationOptions
 from mcp.server import NotificationOptions, Server
+from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 import mcp.types as types
 
 from task_tracker.api.linear_client import LinearClient
-from task_tracker.api.timetracking_client import TimeTrackingClient
-
-linear_client = asyncio.run(LinearClient.create())
-timetracking_client = TimeTrackingClient()
-server = Server("task-tracker")
+from task_tracker.api.trackingtime_client import TrackingTimeClient
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("task-tracker")
-logger.info("task-tracker server started")
+logger.info("starting task-tracker server")
+
+linear_client = asyncio.run(LinearClient.create())
+trackingtime_client = TrackingTimeClient()
+server = Server("task-tracker")
 
 
 @server.list_tools()
@@ -42,16 +42,48 @@ async def handle_list_tools() -> List[types.Tool]:
             }
         ),
         types.Tool(
-            name="log_time",
-            description="Log time for a task",
+            name="set_current_team",
+            description="Set the current Linear team by name",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string"},
-                    "duration": {"type": "integer"},
-                    "description": {"type": "string"}
+                    "team_name": {"type": "string"}
                 },
-                "required": ["task_id", "duration", "description"]
+                "required": ["team_name"]
+            }
+        ),
+        types.Tool(
+            name="get_my_tasks",
+            description=(
+                "Get the Linear tasks assigned to me. "
+                "Support task status: backlog, unstarted, started, completed, canceled, triage. "
+                "Default is unstarted."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "optional": True,
+                        "description": "List of task status to filter by"
+                    }
+                },
+                "required": []
+            }
+        ),
+        types.Tool(
+            name="search_tasks",
+            description="Search Linear tasks by title or identifier",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "search_term": {
+                        "type": "string",
+                        "description": "Text to search for in task titles or identifiers"
+                    }
+                },
+                "required": ["search_term"]
             }
         ),
         types.Tool(
@@ -78,52 +110,23 @@ async def handle_list_tools() -> List[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "entry_id": {"type": "string"}
-                },
-                "required": ["entry_id"]
-            }
-        ),
-        types.Tool(
-            name="set_current_team",
-            description="Set the current team by name",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "team_name": {"type": "string"}
-                },
-                "required": ["team_name"]
-            }
-        ),
-        types.Tool(
-            name="get_my_tasks",
-            description="Get tasks assigned to me. Support task status: backlog, unstarted, started, completed, canceled, triage. Default is unstarted.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "optional": True,
-                        "description": "List of task status to filter by"
+                    "task_id": {
+                        "type": "string",
+                        "description": "task id"
                     }
                 },
+                "required": ["task_id"]
+            }
+        ),
+        types.Tool(
+            name="get_active_tracking",
+            description="Get the currently active tracking task",
+            inputSchema={
+                "type": "object",
+                "properties": {},
                 "required": []
             }
         ),
-        types.Tool(
-            name="search_tasks",
-            description="Search for tasks by title or identifier",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "search_term": {
-                        "type": "string",
-                        "description": "Text to search for in task titles or identifiers"
-                    }
-                },
-                "required": ["search_term"]
-            }
-        )
     ]
 
 
@@ -145,37 +148,6 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
                 type="text",
                 text=f"Task created successfully: {
                     json.dumps(result, indent=2)}"
-            )]
-
-        elif name == "log_time":
-            result = await timetracking_client.log_time(
-                task_id=arguments["task_id"],
-                duration=arguments["duration"],
-                description=arguments["description"]
-            )
-            return [types.TextContent(
-                type="text",
-                text=f"Time logged successfully: {
-                    json.dumps(result, indent=2)}"
-            )]
-
-        elif name == "start_tracking":
-            result = await timetracking_client.start_tracking(
-                project=arguments["project"],
-                description=arguments["description"]
-            )
-            return [types.TextContent(
-                type="text",
-                text=f"Time tracking started: {json.dumps(result, indent=2)}"
-            )]
-
-        elif name == "stop_tracking":
-            result = await timetracking_client.stop_tracking(
-                entry_id=arguments["entry_id"]
-            )
-            return [types.TextContent(
-                type="text",
-                text=f"Time tracking stopped: {json.dumps(result, indent=2)}"
             )]
 
         elif name == "set_current_team":
@@ -213,6 +185,38 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
                 type="text",
                 text=f"Found {len(tasks)} tasks matching '{search_term}':\n{
                     json.dumps(tasks, indent=2)}"
+            )]
+
+        elif name == "start_tracking":
+            result = await trackingtime_client.start_tracking(
+                project=arguments["project"],
+                description=arguments["description"]
+            )
+            return [types.TextContent(
+                type="text",
+                text=f"Time tracking started: {json.dumps(result, indent=2)}"
+            )]
+
+        elif name == "stop_tracking":
+            result = await trackingtime_client.stop_tracking(
+                task_id=arguments["task_id"]
+            )
+            return [types.TextContent(
+                type="text",
+                text=f"Time tracking stopped: {json.dumps(result, indent=2)}"
+            )]
+
+        elif name == "get_active_tracking":
+            result = await trackingtime_client.get_tracking_task(filter="TRACKING")
+            if not result:
+                return [types.TextContent(
+                    type="text",
+                    text="No active time tracking task found"
+                )]
+            return [types.TextContent(
+                type="text",
+                text=f"Current tracking task:\n{
+                    json.dumps(result, indent=2)}"
             )]
 
         raise ValueError(f"Unknown tool: {name}")
