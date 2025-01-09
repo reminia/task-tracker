@@ -5,11 +5,19 @@ from task_tracker.config import settings
 
 
 class TrackingTimeClient:
-    def __init__(self):
-        self.api_key = settings.TRACKINGTIME_API_KEY
+    def __init__(
+        self,
+        username: Optional[str] = settings.TRACKINGTIME_USERNAME,
+        password: Optional[str] = settings.TRACKINGTIME_PASSWORD
+    ):
         self.base_url = "https://app.trackingtime.co/api/v4"
-        self.auth = aiohttp.BasicAuth.decode(f"Basic {self.api_key}")
         self.headers = {"Content-Type": "application/json"}
+
+        if username and password:
+            self.auth = aiohttp.BasicAuth(username, password)
+        else:
+            self.api_key = settings.TRACKINGTIME_API_KEY
+            self.auth = aiohttp.BasicAuth.decode(f"Basic {self.api_key}")
 
     async def start_tracking(self, project: str, task: str) -> dict:
         """Start time tracking a task
