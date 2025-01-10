@@ -70,18 +70,17 @@ class LinearClient:
     async def create_task(
         self,
         title: str,
-        team_id: Optional[str] = None,
         description: Optional[str] = None,
-        project: Optional[str] = None
+        project: Optional[str] = None,
+        team_id: Optional[str] = None,
     ) -> dict:
         """Create a new task in Linear
 
         Args:
             title: Task title
-            team_id: Team ID (uses current team if not specified)
             description: Task description (optional)
             project: Project name to associate the task with (optional)
-            assignee_id: ID of the user to assign the task to (optional)
+            team_id: Team ID (uses current team if not specified)
         """
         if not team_id and not self._current_team_id:
             raise ValueError(
@@ -105,13 +104,16 @@ class LinearClient:
                     title
                     description
                     state {
-                        id
+                        name
+                    }
+                    project {
                         name
                     }
                     assignee {
                         id
-                        name
                     }
+                    createdAt
+                    updatedAt
                 }
             }
         }
@@ -120,15 +122,16 @@ class LinearClient:
             "input": {
                 "title": title,
                 "teamId": team_id or self._current_team_id,
-                **({"description": description} if description else {}),
-                **({"projectId": project_id} if project_id else {}),
-                **({"assigneeId": self._current_user_id} if self._current_user_id else {})
+                "description": description if description else None,
+                "projectId": project_id if project_id else None,
+                "assigneeId": self._current_user_id if self._current_user_id else None,
             }
         }
 
         result = await self.execute_query(mutation, variables)
         if not result.get("data", {}).get("issueCreate", {}).get("success"):
             raise ValueError("Failed to create task")
+
         return result["data"]["issueCreate"]["issue"]
 
     async def fetch_team(self, team_name: str) -> Optional[dict]:
@@ -290,7 +293,7 @@ class LinearClient:
             project: Name of the project to find
 
         Returns:
-            Optional[dict]: Project details if found, None otherwise
+            Optional[dict]: Project details
 
         Raises:
             ValueError: If no current team is set
@@ -300,26 +303,35 @@ class LinearClient:
                 "Current team must be set before fetching project")
 
         query = """
-        query Projects($teamId: ID!, $filter: ProjectFilter) {
-            projects(
-                filter: {
-                    team: { id: { eq: $teamId } },
-                    name: { eq: $filter }
-                }
-            ) {
+        query Projects($name: String!) {
+            projects(filter: { name: { eq: $name } }) {
                 nodes {
                     id
                     name
                     description
+                    teams {
+                        nodes {
+                            id
+                        }
+                    }
                 }
             }
         }
         """
         variables = {
-            "teamId": self._current_team_id,
-            "filter": project
+            "name": project
         }
 
         result = await self.execute_query(query, variables)
         projects = result["data"]["projects"]["nodes"]
-        return projects[0] if projects else None
+        # Filter projects by team ID
+        for project in projects:
+            team_ids = [team["id"] for team in project["teams"]["nodes"]]
+            if self._current_team_id in team_ids:
+                return {
+                    "id": project["id"],
+                    "name": project["name"],
+                    "description": project["description"]
+                }
+
+        raise ValueError(f"Project '{project}' not found in current team")

@@ -10,12 +10,9 @@ import mcp.types as types
 
 from task_tracker.api.linear_client import LinearClient
 from task_tracker.api.trackingtime_client import TrackingTimeClient
+from task_tracker.logger import get_logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("task-tracker")
+logger = get_logger(__name__)
 logger.info("starting task-tracker server")
 
 linear_client = asyncio.run(LinearClient.create())
@@ -36,7 +33,7 @@ async def handle_list_tools() -> List[types.Tool]:
                     "title": {"type": "string"},
                     "description": {"type": "string", "optional": True},
                     "team_id": {"type": "string", "optional": True},
-                    "porject": {"type": "string", "optional": True}
+                    "project": {"type": "string", "optional": True}
                 },
                 "required": ["title"]
             }
