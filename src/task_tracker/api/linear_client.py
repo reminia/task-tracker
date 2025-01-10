@@ -14,15 +14,24 @@ class LinearClient:
         self._current_team_name = None
         self._current_user_id = None
         self._current_user_name = None
+        self._workflow_states = None
 
     @classmethod
     async def create(cls, team_name: Optional[str] = settings.LINEAR_TEAM) -> "LinearClient":
         client = cls()
-        if team_name:
-            await client.set_current_team(team_name)
-        user = await client.get_current_user()
+
+        user_task = client.get_current_user()
+        workflow_states_task = client.get_workflow_states()
+        team_task = client.set_current_team(team_name) if team_name else None
+
+        user = await user_task
+        client._workflow_states = await workflow_states_task
+        if team_task:
+            await team_task
+
         client._current_user_id = user["id"]
         client._current_user_name = user["name"]
+
         return client
 
     async def execute_query(self, query: str, variables: Optional[dict] = None) -> dict:
@@ -335,3 +344,76 @@ class LinearClient:
                 }
 
         raise ValueError(f"Project '{project}' not found in current team")
+
+    async def update_task_status(self, task_id: str, status: str) -> dict:
+        """Update a task's status
+
+        Args:
+            task_id: ID of the task to update
+            status: New status type (backlog, unstarted, started, done, canceled)
+
+        Returns:
+            dict: Updated task details
+
+        Raises:
+            ValueError: If the update fails or status not found
+        """
+        status = status.upper()
+        if status not in self._workflow_states:
+            raise ValueError(f"Invalid status: {status}; All supported statuses: {
+                             self._workflow_states}")
+
+        state_id = self._workflow_states[status]
+
+        mutation = """
+        mutation UpdateIssue($id: String!, $input: IssueUpdateInput!) {
+            issueUpdate(id: $id, input: $input) {
+                success
+                issue {
+                    id
+                    identifier
+                    title
+                    state {
+                        name
+                        type
+                    }
+                    updatedAt
+                }
+            }
+        }
+        """
+
+        variables = {
+            "id": task_id,
+            "input": {
+                "stateId": state_id
+            }
+        }
+
+        result = await self.execute_query(mutation, variables)
+        if not result.get("data", {}).get("issueUpdate", {}).get("success"):
+            raise ValueError("Failed to update task status")
+
+        return result["data"]["issueUpdate"]["issue"]
+
+    async def get_workflow_states(self) -> List[dict]:
+        """Get all workflow states available in Linear
+
+        Returns:
+            List[dict]: List of workflow states with their IDs and names
+
+        Raises:
+            ValueError: If the API request fails
+        """
+        query = """
+        query WorkflowStates {
+            workflowStates {
+                nodes {
+                    id
+                    name
+                }
+            }
+        }
+        """
+        result = await self.execute_query(query)
+        return {state["name"].upper(): state["id"] for state in result["data"]["workflowStates"]["nodes"]}

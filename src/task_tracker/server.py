@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 from typing import Any, Dict, List
 
 from mcp.server import NotificationOptions, Server
@@ -124,6 +123,24 @@ async def handle_list_tools() -> List[types.Tool]:
                 "required": []
             }
         ),
+        types.Tool(
+            name="update_task_status",
+            description="Update a Linear task's status",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "ID of the task to update"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "New status (backlog, unstarted, started, done, canceled)"
+                    }
+                },
+                "required": ["task_id", "status"]
+            }
+        ),
     ]
 
 
@@ -182,6 +199,17 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
                 type="text",
                 text=f"Found {len(tasks)} tasks matching '{search_term}':\n{
                     json.dumps(tasks, indent=2)}"
+            )]
+
+        elif name == "update_task_status":
+            result = await linear_client.update_task_status(
+                task_id=arguments["task_id"],
+                status=arguments["status"]
+            )
+            return [types.TextContent(
+                type="text",
+                text=f"Task status updated successfully: {
+                    json.dumps(result, indent=2)}"
             )]
 
         elif name == "start_tracking":
