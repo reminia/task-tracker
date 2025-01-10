@@ -4,6 +4,13 @@
 
 A Model Context Protocol server that integrates Linear task management and TrackingTime time tracking.
 
+## Motivation
+
+I've been using Linear for task management and TrackingTime for time tracking for a long time. I found it could be very helpful to use LLM to automate my workflows and tasks.
+With the benifits of large language models, I can use natural language to create tasks, update task statuses, start and stop time tracking, and more.
+
+If I develop more MCP servers tailored to my own needs, I can make the Claude client an all-in-one workspace for me.
+
 ## Features
 
 - Integration with Linear API for task management
