@@ -145,17 +145,17 @@ class LinearClient:
         teams = result["data"]["teams"]["nodes"]
         return teams[0] if teams else None
 
-    async def get_tasks(self, states: Union[str, List[str]] = "unstarted") -> List[dict]:
+    async def filter_tasks(self, states: Union[str, List[str]] = "unstarted") -> List[dict]:
         """Fetch tasks assigned to the authenticated user filtered by state(s)
-        
+
         Args:
             states: State type(s) to filter by (default: "unstarted")
                    Can be a single state string or list of states
                    Valid values: "backlog", "unstarted", "started", "completed", "canceled", "triage"
-        
+
         Returns:
             List[dict]: List of tasks matching the criteria, including project information
-            
+
         Raises:
             ValueError: If no current team is set
         """
@@ -201,7 +201,7 @@ class LinearClient:
         }
         """
         result = await self.execute_query(
-            query, 
+            query,
             {
                 "teamId": self._current_team_id,
                 "states": state_list
@@ -211,13 +211,13 @@ class LinearClient:
 
     async def search_tasks(self, search_term: str) -> List[dict]:
         """Search for tasks by title/description across the current team
-        
+
         Args:
             search_term: Text to search for in task titles and descriptions
-        
+
         Returns:
             List[dict]: List of tasks matching the search criteria
-            
+
         Raises:
             ValueError: If no current team is set
         """
@@ -265,43 +265,3 @@ class LinearClient:
             }
         )
         return result["data"]["issues"]["nodes"]
-
-    async def start_tracking(self, task_id: str, description: str) -> dict:
-        """Start time tracking for a task
-        
-        Args:
-            task_id: ID of the task to track time for
-            description: Description of the time tracking entry
-            
-        Returns:
-            dict: Details of the created time tracking entry
-        """
-        mutation = """
-        mutation CreateTimeEntry($input: TimeEntryCreateInput!) {
-            timeEntryCreate(input: $input) {
-                success
-                timeEntry {
-                    id
-                    description
-                    startedAt
-                    issue {
-                        id
-                        identifier
-                        title
-                    }
-                }
-            }
-        }
-        """
-        variables = {
-            "input": {
-                "issueId": task_id,
-                "description": description,
-                "startedAt": "now"
-            }
-        }
-
-        result = await self.execute_query(mutation, variables)
-        if not result.get("data", {}).get("timeEntryCreate", {}).get("success"):
-            raise ValueError("Failed to start time tracking")
-        return result["data"]["timeEntryCreate"]["timeEntry"]

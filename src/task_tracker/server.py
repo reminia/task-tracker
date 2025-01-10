@@ -74,13 +74,13 @@ async def handle_list_tools() -> List[types.Tool]:
         ),
         types.Tool(
             name="search_tasks",
-            description="Search Linear tasks by title or identifier",
+            description="Search Linear tasks by title",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "search_term": {
                         "type": "string",
-                        "description": "Text to search for in task titles or identifiers"
+                        "description": "Text to search for in task titles"
                     }
                 },
                 "required": ["search_term"]
@@ -159,11 +159,11 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
             )]
 
         elif name == "get_my_tasks":
-            states = arguments.get("states", ["unstarted"])
-            tasks = await linear_client.get_tasks(states=states)
+            states = arguments.get("status", ["unstarted"])
+            tasks = await linear_client.filter_tasks(states=states)
             return [types.TextContent(
                 type="text",
-                text=f"Your pending tasks:\n{json.dumps(tasks, indent=2)}"
+                text=f"Your tasks:\n{json.dumps(tasks, indent=2)}"
             )]
 
         elif name == "search_tasks":
