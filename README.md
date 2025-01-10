@@ -14,7 +14,15 @@ If I develop more MCP servers tailored to my own needs, I can make the Claude cl
 ## Features
 
 - Integration with Linear API for task management
+  - Create new tasks with optional project and team assignments
+  - Set current working team
+  - View tasks assigned to you (filterable by status)
+  - Search tasks by title
+  - Update task status
 - Integration with TrackingTime for task time tracking
+  - Start time tracking for tasks
+  - Stop active time tracking
+  - View currently active tracked task
 
 ## Setup
 
