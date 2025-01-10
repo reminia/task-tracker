@@ -29,16 +29,16 @@ async def handle_list_tools() -> List[types.Tool]:
     return [
         types.Tool(
             name="create_task",
-            description="Create a new task in Linear",
+            description="Create a new task in Linear, you can specify the project and team",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "title": {"type": "string"},
                     "description": {"type": "string", "optional": True},
-                    "assignee_id": {"type": "string", "optional": True},
-                    "team_id": {"type": "string"}
+                    "team_id": {"type": "string", "optional": True},
+                    "porject": {"type": "string", "optional": True}
                 },
-                "required": ["title", "team_id"]
+                "required": ["title"]
             }
         ),
         types.Tool(
@@ -141,7 +141,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
             result = await linear_client.create_task(
                 title=arguments["title"],
                 description=arguments.get("description"),
-                assignee_id=arguments.get("assignee_id"),
+                project=arguments.get("project"),
                 team_id=arguments.get("team_id")
             )
             return [types.TextContent(

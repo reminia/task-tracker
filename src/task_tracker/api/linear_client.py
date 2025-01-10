@@ -10,14 +10,19 @@ class LinearClient:
             "Content-Type": "application/json",
             "Authorization": settings.LINEAR_API_KEY
         }
-        self._current_team_name = None
         self._current_team_id = None
+        self._current_team_name = None
+        self._current_user_id = None
+        self._current_user_name = None
 
     @classmethod
     async def create(cls, team_name: Optional[str] = settings.LINEAR_TEAM) -> "LinearClient":
         client = cls()
         if team_name:
             await client.set_current_team(team_name)
+        user = await client.get_current_user()
+        client._current_user_id = user["id"]
+        client._current_user_name = user["name"]
         return client
 
     async def execute_query(self, query: str, variables: Optional[dict] = None) -> dict:
@@ -33,6 +38,27 @@ class LinearClient:
                     raise ValueError(f"Linear API error: {error_data}")
                 return await response.json()
 
+    async def get_current_user(self) -> dict:
+        """Get details of the authenticated user
+
+        Returns:
+            dict: User details including id, name and email
+
+        Raises:
+            ValueError: If the API request fails
+        """
+        query = """
+        query Me {
+            viewer {
+                id
+                name
+                email
+            }
+        }
+        """
+        result = await self.execute_query(query)
+        return result["data"]["viewer"]
+
     async def set_current_team(self, team_name: str) -> None:
         """Set the current team ID for task operations"""
         team = await self.fetch_team(team_name)
@@ -41,31 +67,12 @@ class LinearClient:
         self._current_team_id = team["id"]
         self._current_team_name = team["name"]
 
-    async def get_current_team(self) -> Optional[dict]:
-        """Get the current team's details"""
-        if not self._current_team_id:
-            return None
-
-        query = """
-        query Team($id: String!) {
-            team(id: $id) {
-                id
-                name
-            }
-        }
-        """
-        result = await self.execute_query(query, {"id": self._current_team_id})
-        return {
-            "id": result["data"]["team"]["id"],
-            "name": result["data"]["team"]["name"]
-        }
-
     async def create_task(
         self,
         title: str,
         team_id: Optional[str] = None,
         description: Optional[str] = None,
-        assignee_id: Optional[str] = None
+        project: Optional[str] = None
     ) -> dict:
         """Create a new task in Linear
 
@@ -73,11 +80,20 @@ class LinearClient:
             title: Task title
             team_id: Team ID (uses current team if not specified)
             description: Task description (optional)
-            assignee_id: User ID to assign the task to (optional)
+            project: Project name to associate the task with (optional)
+            assignee_id: ID of the user to assign the task to (optional)
         """
         if not team_id and not self._current_team_id:
             raise ValueError(
                 "team_id must be provided or current team must be set")
+
+        project_id = None
+        if project:
+            project = await self.fetch_project(project)
+            if project:
+                project_id = project["id"]
+            else:
+                raise ValueError(f"Project '{project}' not found")
 
         mutation = """
         mutation CreateIssue($input: IssueCreateInput!) {
@@ -105,13 +121,14 @@ class LinearClient:
                 "title": title,
                 "teamId": team_id or self._current_team_id,
                 **({"description": description} if description else {}),
-                **({"assigneeId": assignee_id} if assignee_id else {})
+                **({"projectId": project_id} if project_id else {}),
+                **({"assigneeId": self._current_user_id} if self._current_user_id else {})
             }
         }
 
         result = await self.execute_query(mutation, variables)
         if not result.get("data", {}).get("issueCreate", {}).get("success"):
-            raise ValueError("Failed to create issue")
+            raise ValueError("Failed to create task")
         return result["data"]["issueCreate"]["issue"]
 
     async def fetch_team(self, team_name: str) -> Optional[dict]:
@@ -265,3 +282,44 @@ class LinearClient:
             }
         )
         return result["data"]["issues"]["nodes"]
+
+    async def fetch_project(self, project: str) -> Optional[dict]:
+        """Get project details by project name within the current team
+
+        Args:
+            project: Name of the project to find
+
+        Returns:
+            Optional[dict]: Project details if found, None otherwise
+
+        Raises:
+            ValueError: If no current team is set
+        """
+        if not self._current_team_id:
+            raise ValueError(
+                "Current team must be set before fetching project")
+
+        query = """
+        query Projects($teamId: ID!, $filter: ProjectFilter) {
+            projects(
+                filter: {
+                    team: { id: { eq: $teamId } },
+                    name: { eq: $filter }
+                }
+            ) {
+                nodes {
+                    id
+                    name
+                    description
+                }
+            }
+        }
+        """
+        variables = {
+            "teamId": self._current_team_id,
+            "filter": project
+        }
+
+        result = await self.execute_query(query, variables)
+        projects = result["data"]["projects"]["nodes"]
+        return projects[0] if projects else None
