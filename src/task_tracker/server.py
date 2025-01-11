@@ -109,7 +109,7 @@ async def handle_list_tools() -> List[types.Tool]:
                     "task_id": {
                         "type": "string",
                         "description": "task id"
-                    }
+                    },
                 },
                 "required": ["task_id"]
             }
@@ -139,6 +139,24 @@ async def handle_list_tools() -> List[types.Tool]:
                     }
                 },
                 "required": ["task_id", "status"]
+            }
+        ),
+        types.Tool(
+            name="add_tracking_note",
+            description="Add a note to the current tracking entry",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "event_id": {
+                        "type": "string",
+                        "description": "ID of the active tracking event to add notes to"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Notes to add to the time entry"
+                    }
+                },
+                "required": ["event_id", "notes"]
             }
         ),
     ]
@@ -240,7 +258,17 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
                 )]
             return [types.TextContent(
                 type="text",
-                text=f"Current tracking task:\n{
+                text=f"Current tracking task:\n{json.dumps(result, indent=2)}"
+            )]
+
+        elif name == "add_tracking_note":
+            result = await trackingtime_client.update_entry_notes(
+                event_id=arguments["event_id"],
+                notes=arguments["notes"]
+            )
+            return [types.TextContent(
+                type="text",
+                text=f"Added note to tracking entry: {
                     json.dumps(result, indent=2)}"
             )]
 

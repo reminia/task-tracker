@@ -2,6 +2,9 @@ from typing import Optional
 import aiohttp
 from datetime import datetime
 from task_tracker.config import settings
+from task_tracker.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class TrackingTimeClient:
@@ -44,8 +47,7 @@ class TrackingTimeClient:
                 }
             ) as response:
                 response.raise_for_status()
-                full_response = await response.json()
-                return {"tracking_task_id": full_response["data"]["id"]}
+                return await response.json()
 
     async def stop_tracking(self, task_id: str) -> dict:
         """Stop time tracking a task given its ID
@@ -86,4 +88,29 @@ class TrackingTimeClient:
                 }
             ) as response:
                 response.raise_for_status()
+                return await response.json()
+
+    async def update_entry_notes(self, event_id: str, notes: str) -> dict:
+        """Update the notes for a time entry
+
+        Args:
+            event_id: The ID of the active tracking event to update
+            notes: Notes to add to the time entry (up to 5000 characters)
+
+        Returns:
+            dict: Response from TrackingTime API containing the updated entry details
+        """
+        async with aiohttp.ClientSession(auth=self.auth, headers=self.headers) as session:
+            # stop and start timezone must match, otherwise server 500
+            local_tz = datetime.now().astimezone().tzinfo
+            current_time = datetime.now(local_tz).strftime("%Y-%m-%d %H:%M:%S")
+            async with session.post(
+                f"{self.base_url}/events/update/{event_id}",
+                params={
+                    "notes": notes,
+                }
+            ) as response:
+                if not response.ok:
+                    logger.error(f"Failed to update entry notes: {await response.text()}")
+                    response.raise_for_status()
                 return await response.json()

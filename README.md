@@ -23,6 +23,7 @@ If I develop more MCP servers tailored to my own needs, I can make the Claude cl
   - Start time tracking for tasks
   - Stop active time tracking
   - View currently active tracked task
+  - Add notes to tracking task
 
 ## Setup
 
