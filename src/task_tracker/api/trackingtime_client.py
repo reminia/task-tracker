@@ -101,9 +101,6 @@ class TrackingTimeClient:
             dict: Response from TrackingTime API containing the updated entry details
         """
         async with aiohttp.ClientSession(auth=self.auth, headers=self.headers) as session:
-            # stop and start timezone must match, otherwise server 500
-            local_tz = datetime.now().astimezone().tzinfo
-            current_time = datetime.now(local_tz).strftime("%Y-%m-%d %H:%M:%S")
             async with session.post(
                 f"{self.base_url}/events/update/{event_id}",
                 params={
