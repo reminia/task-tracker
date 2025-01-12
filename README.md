@@ -4,6 +4,8 @@
 
 A Model Context Protocol server that integrates Linear task management and TrackingTime time tracking.
 
+![task-tracker-demo](https://res.cloudinary.com/leecy-me/image/upload/v1736674972/open/tasktracker_fd3neu.gif)
+
 ## Motivation
 
 I've been using Linear for task management and TrackingTime for time tracking for a long time. I found it could be very helpful to use LLM to automate my workflows and tasks.
