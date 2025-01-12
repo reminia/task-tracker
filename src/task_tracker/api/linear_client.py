@@ -417,3 +417,32 @@ class LinearClient:
         """
         result = await self.execute_query(query)
         return {state["name"].upper(): state["id"] for state in result["data"]["workflowStates"]["nodes"]}
+
+    async def get_projects(self) -> List[dict]:
+        """Get all projects
+
+        Returns:
+            List[dict]: List of projects with their details
+        """
+        query = """
+        query Projects {
+            projects {
+                nodes {
+                    id
+                    name
+                    description
+                    teams {
+                      nodes {
+                          id
+                          name
+                      }
+                    }
+                    startDate
+                    targetDate
+                }
+            }
+        }
+        """
+
+        result = await self.execute_query(query)
+        return result["data"]["projects"]["nodes"]

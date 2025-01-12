@@ -83,6 +83,15 @@ async def handle_list_tools() -> List[types.Tool]:
             }
         ),
         types.Tool(
+            name="get_all_projects",
+            description="Get all Linear projects",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        types.Tool(
             name="start_tracking",
             description="Start time tracking for a task",
             inputSchema={
@@ -217,6 +226,14 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[
                 type="text",
                 text=f"Found {len(tasks)} tasks matching '{search_term}':\n{
                     json.dumps(tasks, indent=2)}"
+            )]
+
+        elif name == "get_all_projects":
+            projects = await linear_client.get_projects()
+            return [types.TextContent(
+                type="text",
+                text=f"All your projects:\n{
+                    json.dumps(projects, indent=2)}"
             )]
 
         elif name == "update_task_status":
