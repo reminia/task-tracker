@@ -19,7 +19,7 @@ If I develop more MCP servers tailored to my own needs, I can make the Claude cl
   - Create new tasks with optional project and team assignments
   - Set current working team
   - Get projects
-  - View tasks assigned to you (filterable by status)
+  - View tasks by status (backlog, todo, duplicate, in progress, done, canceled)
   - Search tasks by title
   - Update task status
 - Integration with TrackingTime for task time tracking

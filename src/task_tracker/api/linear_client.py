@@ -1,6 +1,9 @@
 from typing import List, Optional, Union
 import aiohttp
 from task_tracker.config import settings
+from task_tracker.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class LinearClient:
@@ -31,7 +34,8 @@ class LinearClient:
 
         client._current_user_id = user["id"]
         client._current_user_name = user["name"]
-
+        logger.info("Linear user and team: %s, %s", client._current_user_name, client._current_team_name)
+        logger.info("Linear workflow states: %s", list(client._workflow_states.keys()))
         return client
 
     async def execute_query(self, query: str, variables: Optional[dict] = None) -> dict:

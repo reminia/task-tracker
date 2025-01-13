@@ -43,8 +43,8 @@ async def handle_list_tools() -> List[types.Tool]:
                         "type": "string",
                         "optional": True,
                         "description": (
-                            "Linear team id that is provided internally by default"
-                            "Don't setup team id unless user explicitly requests it"
+                            "Linear team has been set in advance by default."
+                            "Don't setup it unless user explicitly requests to."
                         ),
                     },
                 },
@@ -64,7 +64,7 @@ async def handle_list_tools() -> List[types.Tool]:
             name="get_my_tasks",
             description=(
                 "Get the Linear tasks assigned to me. "
-                "Support task status: backlog, unstarted, started, completed, canceled, triage. "
+                "Support task status: backlog, unstarted(todo), duplicate, in progress, done, canceled"
                 "Default is unstarted."
             ),
             inputSchema={
@@ -142,7 +142,7 @@ async def handle_list_tools() -> List[types.Tool]:
                     },
                     "status": {
                         "type": "string",
-                        "description": "New status (backlog, unstarted, started, done, canceled)",
+                        "description": "New status (backlog, unstarted(todo), in progress, done, canceled)",
                     },
                 },
                 "required": ["task_id", "status"],
