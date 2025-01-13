@@ -11,7 +11,7 @@ class LinearClient:
         self.base_url = "https://api.linear.app/graphql"
         self.headers = {
             "Content-Type": "application/json",
-            "Authorization": settings.LINEAR_API_KEY
+            "Authorization": settings.LINEAR_API_KEY,
         }
         self._current_team_id = None
         self._current_team_name = None
@@ -20,7 +20,9 @@ class LinearClient:
         self._workflow_states = None
 
     @classmethod
-    async def create(cls, team_name: Optional[str] = settings.LINEAR_TEAM) -> "LinearClient":
+    async def create(
+        cls, team_name: Optional[str] = settings.LINEAR_TEAM
+    ) -> "LinearClient":
         client = cls()
 
         user_task = client.get_current_user()
@@ -34,7 +36,11 @@ class LinearClient:
 
         client._current_user_id = user["id"]
         client._current_user_name = user["name"]
-        logger.info("Linear user and team: %s, %s", client._current_user_name, client._current_team_name)
+        logger.info(
+            "Linear user and team: %s, %s",
+            client._current_user_name,
+            client._current_team_name,
+        )
         logger.info("Linear workflow states: %s", list(client._workflow_states.keys()))
         return client
 
@@ -44,7 +50,7 @@ class LinearClient:
             async with session.post(
                 self.base_url,
                 json={"query": query, "variables": variables or {}},
-                headers=self.headers
+                headers=self.headers,
             ) as response:
                 if response.status >= 400:
                     error_data = await response.json()
@@ -86,6 +92,7 @@ class LinearClient:
         description: Optional[str] = None,
         project: Optional[str] = None,
         team_id: Optional[str] = None,
+        state: Optional[str] = "TODO",
     ) -> dict:
         """Create a new task in Linear
 
@@ -94,10 +101,10 @@ class LinearClient:
             description: Task description (optional)
             project: Project name to associate the task with (optional)
             team_id: Team ID (uses current team if not specified)
+            state: Initial state for the task (optional), default is "unstarted".
         """
         if not team_id and not self._current_team_id:
-            raise ValueError(
-                "team_id must be provided or current team must be set")
+            raise ValueError("team_id must be provided or current team must be set")
 
         project_id = None
         if project:
@@ -106,6 +113,12 @@ class LinearClient:
                 project_id = project["id"]
             else:
                 raise ValueError(f"Project '{project}' not found")
+
+        state_id = None
+        if state and state in self._workflow_states:
+            state_id = self._workflow_states[state]
+        else:
+            state_id = self._workflow_states['TODO']
 
         mutation = """
         mutation CreateIssue($input: IssueCreateInput!) {
@@ -138,6 +151,7 @@ class LinearClient:
                 "description": description if description else None,
                 "projectId": project_id if project_id else None,
                 "assigneeId": self._current_user_id if self._current_user_id else None,
+                "stateId": state_id if state_id else None,
             }
         }
 
@@ -168,17 +182,15 @@ class LinearClient:
             }
         }
         """
-        variables = {
-            "filter": {
-                "name": {"eq": team_name}
-            }
-        }
+        variables = {"filter": {"name": {"eq": team_name}}}
 
         result = await self.execute_query(query, variables)
         teams = result["data"]["teams"]["nodes"]
         return teams[0] if teams else None
 
-    async def filter_tasks(self, states: Union[str, List[str]] = "unstarted") -> List[dict]:
+    async def filter_tasks(
+        self, states: Union[str, List[str]] = "unstarted"
+    ) -> List[dict]:
         """Fetch tasks assigned to the authenticated user filtered by state(s)
 
         Args:
@@ -234,11 +246,7 @@ class LinearClient:
         }
         """
         result = await self.execute_query(
-            query,
-            {
-                "teamId": self._current_team_id,
-                "states": state_list
-            }
+            query, {"teamId": self._current_team_id, "states": state_list}
         )
         return result["data"]["issues"]["nodes"]
 
@@ -291,11 +299,7 @@ class LinearClient:
         }
         """
         result = await self.execute_query(
-            query,
-            {
-                "teamId": self._current_team_id,
-                "searchTerm": search_term
-            }
+            query, {"teamId": self._current_team_id, "searchTerm": search_term}
         )
         return result["data"]["issues"]["nodes"]
 
@@ -312,8 +316,7 @@ class LinearClient:
             ValueError: If no current team is set
         """
         if not self._current_team_id:
-            raise ValueError(
-                "Current team must be set before fetching project")
+            raise ValueError("Current team must be set before fetching project")
 
         query = """
         query Projects($name: String!) {
@@ -331,9 +334,7 @@ class LinearClient:
             }
         }
         """
-        variables = {
-            "name": project
-        }
+        variables = {"name": project}
 
         result = await self.execute_query(query, variables)
         projects = result["data"]["projects"]["nodes"]
@@ -344,7 +345,7 @@ class LinearClient:
                 return {
                     "id": project["id"],
                     "name": project["name"],
-                    "description": project["description"]
+                    "description": project["description"],
                 }
 
         raise ValueError(f"Project '{project}' not found in current team")
@@ -364,8 +365,10 @@ class LinearClient:
         """
         status = status.upper()
         if status not in self._workflow_states:
-            raise ValueError(f"Invalid status: {status}; All supported statuses: {
-                             self._workflow_states}")
+            raise ValueError(
+                f"Invalid status: {status}; All supported statuses: {
+                             self._workflow_states}"
+            )
 
         state_id = self._workflow_states[status]
 
@@ -387,12 +390,7 @@ class LinearClient:
         }
         """
 
-        variables = {
-            "id": task_id,
-            "input": {
-                "stateId": state_id
-            }
-        }
+        variables = {"id": task_id, "input": {"stateId": state_id}}
 
         result = await self.execute_query(mutation, variables)
         if not result.get("data", {}).get("issueUpdate", {}).get("success"):
@@ -420,7 +418,10 @@ class LinearClient:
         }
         """
         result = await self.execute_query(query)
-        return {state["name"].upper(): state["id"] for state in result["data"]["workflowStates"]["nodes"]}
+        return {
+            state["name"].upper(): state["id"]
+            for state in result["data"]["workflowStates"]["nodes"]
+        }
 
     async def get_projects(self) -> List[dict]:
         """Get all projects

@@ -47,6 +47,11 @@ async def handle_list_tools() -> List[types.Tool]:
                             "Don't setup it unless user explicitly requests to."
                         ),
                     },
+                    "state": {
+                        "type": "string",
+                        "optional": True,
+                        "description": "Initial state for the task (optional), default is todo",
+                    },
                 },
                 "required": ["title"],
             },
@@ -184,6 +189,7 @@ async def handle_call_tool(
                 description=arguments.get("description"),
                 project=arguments.get("project"),
                 team_id=arguments.get("team_id"),
+                state=arguments.get("state"),
             )
             return [
                 types.TextContent(

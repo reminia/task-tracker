@@ -16,7 +16,7 @@ If I develop more MCP servers tailored to my own needs, I can make the Claude cl
 ## Features
 
 - Integration with Linear API for task management
-  - Create new tasks with optional project and team assignments
+  - Create new task with optional project, description and state assignments
   - Set current working team
   - Get projects
   - View tasks by status (backlog, todo, duplicate, in progress, done, canceled)
@@ -37,3 +37,21 @@ If I develop more MCP servers tailored to my own needs, I can make the Claude cl
   uv build 
   uv run task-tracker
   ```
+
+3. setup it in the Claude Desktop:
+
+  ```json
+  {
+  "mcpServers": {
+      "task-tracker": {
+          "command": "uv",
+          "args": [
+              "--directory",
+              "/path/to/task-tracker",
+              "run",
+              "task-tracker"
+          ]
+      }
+  }
+}
+```
