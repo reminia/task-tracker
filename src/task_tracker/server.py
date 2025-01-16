@@ -110,13 +110,17 @@ async def handle_list_tools() -> List[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "project": {"type": "string", "description": "task project"},
+                    "project": {
+                        "type": "string",
+                        "description": "task project",
+                        "optional": True,
+                    },
                     "task": {
                         "type": "string",
                         "description": "task name which is composed by identifier and title",
                     },
                 },
-                "required": ["project", "task"],
+                "required": ["task"],
             },
         ),
         types.Tool(
@@ -262,7 +266,7 @@ async def handle_call_tool(
 
         elif name == "start_tracking":
             result = await trackingtime_client.start_tracking(
-                project=arguments["project"], task=arguments["task"]
+                project=arguments.get("project"), task=arguments["task"]
             )
             return [
                 types.TextContent(

@@ -22,12 +22,12 @@ class TrackingTimeClient:
             self.api_key = settings.TRACKINGTIME_API_KEY
             self.auth = aiohttp.BasicAuth.decode(f"Basic {self.api_key}")
 
-    async def start_tracking(self, project: str, task: str) -> dict:
+    async def start_tracking(self, project: Optional[str], task: str) -> dict:
         """Start time tracking a task
 
         Args:
-            project: name of the project to create the task in
-            description: description of the task
+            project: Optional name of the project to create the task in
+            task: Name of the task to track
 
         Returns:
             dict: json containing the tracking_task_id
@@ -37,14 +37,17 @@ class TrackingTimeClient:
             local_tz = datetime.now().astimezone().tzinfo
             current_time = datetime.now(local_tz).strftime("%Y-%m-%d %H:%M:%S")
 
+            params = {
+                "date": current_time,
+                "task_name": task,
+                "return_task": "true",
+            }
+            if project:
+                params["project_name"] = project
+
             async with session.post(
                 f"{self.base_url}/tasks/track",
-                params={
-                    "date": current_time,
-                    "task_name": task,
-                    "project_name": project,
-                    "return_task": "true",
-                }
+                params=params
             ) as response:
                 response.raise_for_status()
                 return await response.json()
