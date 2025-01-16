@@ -118,7 +118,7 @@ class LinearClient:
         if state and state in self._workflow_states:
             state_id = self._workflow_states[state]
         else:
-            state_id = self._workflow_states['TODO']
+            state_id = self._workflow_states["TODO"]
 
         mutation = """
         mutation CreateIssue($input: IssueCreateInput!) {
@@ -189,14 +189,13 @@ class LinearClient:
         return teams[0] if teams else None
 
     async def filter_tasks(
-        self, states: Union[str, List[str]] = "unstarted"
+        self, states: List[str] = ["unstarted", "started"]
     ) -> List[dict]:
         """Fetch tasks assigned to the authenticated user filtered by state(s)
 
         Args:
-            states: State type(s) to filter by (default: "unstarted")
-                   Can be a single state string or list of states
-                   Valid values: "backlog", "unstarted", "started", "completed", "canceled", "triage"
+            states: List of states to filter by.
+                    Valid values: "backlog", "unstarted", "started", "completed", "canceled", "triage"
 
         Returns:
             List[dict]: List of tasks matching the criteria, including project information
@@ -206,9 +205,6 @@ class LinearClient:
         """
         if not self._current_team_id:
             raise ValueError("Current team must be set before fetching tasks")
-
-        # Convert single state to list for consistent handling
-        state_list = [states] if isinstance(states, str) else states
 
         query = """
         query MyIssues($teamId: ID!, $states: [String!]!) {
@@ -246,7 +242,7 @@ class LinearClient:
         }
         """
         result = await self.execute_query(
-            query, {"teamId": self._current_team_id, "states": state_list}
+            query, {"teamId": self._current_team_id, "states": states}
         )
         return result["data"]["issues"]["nodes"]
 

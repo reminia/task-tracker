@@ -69,8 +69,8 @@ async def handle_list_tools() -> List[types.Tool]:
             name="get_my_tasks",
             description=(
                 "Get the Linear tasks assigned to me. "
-                "Support task status: backlog, unstarted(todo), duplicate, in progress, done, canceled"
-                "Default is unstarted."
+                "Support task status: backlog, unstarted, started, completed, canceled, triage."
+                "Default is started and unstarted."
             ),
             inputSchema={
                 "type": "object",
@@ -207,7 +207,7 @@ async def handle_call_tool(
             ]
 
         elif name == "get_my_tasks":
-            states = arguments.get("status", ["unstarted"])
+            states = arguments.get("status", ["unstarted", "started"])
             tasks = await linear_client.filter_tasks(states=states)
             return [
                 types.TextContent(
